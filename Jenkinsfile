@@ -35,12 +35,11 @@ pipeline {
             steps {
                 script {
                     env.BASE_URL = sh(
-                        script: "aws cloudformation describe-stacks --stack-name todo-list-aws-staging --query 'Stacks[0].Outputs[?OutputKey==\\`BaseUrlApi\\`].OutputValue' --region us-east-1 --output text",
+                        script: '''aws cloudformation describe-stacks --stack-name todo-list-aws-staging --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text''',
                         returnStdout: true
                     ).trim()
                 }
                 sh '''
-                    pip3 install requests
                     export BASE_URL=${BASE_URL}
                     pytest test/integration/todoApiTest.py -v -s
                 '''
