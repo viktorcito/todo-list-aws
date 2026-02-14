@@ -4,21 +4,16 @@ pipeline {
         stage('Get Code') {
             steps {
                 git branch: 'master', url: 'https://github.com/viktorcito/todo-list-aws.git'
+                dir('config') {
+                    git branch: 'master', url: 'https://github.com/viktorcito/todo-list-aws-config.git'
+                }
+                sh 'cp config/samconfig.toml samconfig.toml'
             }
         }
         stage('Deploy') {
             steps {
                 sh 'sam build'
-                sh '''
-                    sam deploy \
-                        --stack-name todo-list-aws-production \
-                        --resolve-s3 \
-                        --no-confirm-changeset \
-                        --no-fail-on-empty-changeset \
-                        --parameter-overrides Stage=production \
-                        --region us-east-1 \
-                        --capabilities CAPABILITY_IAM
-                '''
+                sh 'sam deploy --config-env production'
             }
         }
         stage('Rest Test') {
