@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+    stages {
+        stage('Get Code') {
+            steps {
+                git branch: 'master', url: 'https://github.com/viktorcito/todo-list-aws.git'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'sam build'
+                sh '''
+                    sam deploy \
+                        --stack-name todo-list-aws-production \
+                        --resolve-s3 \
+                        --no-confirm-changeset \
+                        --no-fail-on-empty-changeset \
+                        --parameter-overrides Stage=production \
+                        --region us-east-1 \
+                        --capabilities CAPABILITY_IAM
+                '''
+            }
+        }
+        stage('Rest Test') {
+            steps {
+                script {
+                    env.BASE_URL = sh(
+                        script: '''aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text''',
+                        returnStdout: true
+                    ).trim()
+                }
+                sh '''
+                    export BASE_URL=${BASE_URL}
+                    pytest test/integration/todoApiTest.py -v -s
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
