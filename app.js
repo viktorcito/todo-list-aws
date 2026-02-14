@@ -15,12 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateApiDisplay();
     loadTodos();
 
-    // Event Listeners
-    document.getElementById('add-btn').addEventListener('click', addTodo);
-    document.getElementById('new-todo-text').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addTodo();
-    });
-
+    // Environment switch
     document.querySelectorAll('input[name="environment"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             currentEnv = e.target.value;
@@ -28,6 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateApiDisplay();
             loadTodos();
         });
+    });
+
+    // Add todo
+    document.getElementById('add-btn').addEventListener('click', addTodo);
+    document.getElementById('new-todo-text').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addTodo();
     });
 
     // Search
@@ -56,38 +57,90 @@ function updateStats() {
     const completed = allTodos.filter(t => t.checked === true || t.checked === 'true').length;
     const pending = total - completed;
 
-    document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-completed').textContent = completed;
-    document.getElementById('stat-pending').textContent = pending;
+    animateNumber('stat-total', total);
+    animateNumber('stat-completed', completed);
+    animateNumber('stat-pending', pending);
+}
+
+function animateNumber(elementId, target) {
+    const el = document.getElementById(elementId);
+    const current = parseInt(el.textContent) || 0;
+    if (current === target) return;
+
+    const duration = 400;
+    const start = performance.now();
+
+    function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(current + (target - current) * eased);
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
 }
 
 async function loadTodos() {
     const container = document.getElementById('todos-container');
     container.innerHTML = `
         <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <div class="spinner-border" style="color: var(--primary); width: 3rem; height: 3rem;" role="status">
                 <span class="visually-hidden">Cargando...</span>
             </div>
-            <p class="mt-3 text-muted fw-bold">Cargando tareas desde ${currentEnv}...</p>
+            <p class="mt-3" style="color: var(--gray-500);">Conectando con ${currentEnv}...</p>
         </div>
     `;
 
     try {
-        const response = await fetch(`${currentApiUrl}/todos`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(`${currentApiUrl}/todos`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         allTodos = await response.json();
         updateStats();
         renderTodos();
     } catch (error) {
+        allTodos = [];
+        updateStats();
+
+        let errorMsg = error.message;
+        let helpMsg = '';
+
+        if (error.name === 'AbortError' || error.message === 'Failed to fetch') {
+            errorMsg = 'No se pudo conectar con la API';
+            helpMsg = `
+                <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 12px; padding: 1.2rem; margin-top: 1rem; text-align: left;">
+                    <p style="color: var(--warning); font-weight: 600; margin-bottom: 0.5rem;">
+                        <i class="bi bi-info-circle-fill"></i> Posibles causas:
+                    </p>
+                    <ul style="color: var(--gray-600); margin: 0; padding-left: 1.2rem; font-size: 0.9rem;">
+                        <li>La API necesita ser redesplegada con CORS habilitado</li>
+                        <li>El laboratorio de AWS Academy no esta activo</li>
+                        <li>Los stacks de CloudFormation no estan desplegados</li>
+                    </ul>
+                    <p style="color: var(--gray-500); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 0;">
+                        <i class="bi bi-terminal"></i> Ejecuta el pipeline CI en Jenkins para redesplegar la API con CORS.
+                    </p>
+                </div>
+            `;
+        }
+
         container.innerHTML = `
-            <div class="alert alert-danger border-0 shadow-sm">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                <strong>Error al cargar tareas:</strong> ${error.message}
-                <br><small class="mt-2 d-block">Verifica que la API esté desplegada y accesible.</small>
+            <div class="empty-state">
+                <i class="bi bi-wifi-off" style="color: var(--danger); opacity: 0.6;"></i>
+                <h5 class="mt-3">${errorMsg}</h5>
+                ${helpMsg}
+                <button class="filter-btn mt-3" onclick="loadTodos()" style="cursor: pointer;">
+                    <i class="bi bi-arrow-clockwise"></i> Reintentar
+                </button>
             </div>
         `;
-        updateStats();
     }
 }
 
@@ -95,64 +148,61 @@ function renderTodos() {
     const container = document.getElementById('todos-container');
 
     let filteredTodos = allTodos.filter(todo => {
+        const isChecked = todo.checked === true || todo.checked === 'true';
         const matchesFilter =
             currentFilter === 'all' ||
-            (currentFilter === 'completed' && (todo.checked === true || todo.checked === 'true')) ||
-            (currentFilter === 'pending' && (todo.checked === false || todo.checked === 'false' || !todo.checked));
+            (currentFilter === 'completed' && isChecked) ||
+            (currentFilter === 'pending' && !isChecked);
 
-        const matchesSearch = !searchQuery ||
-            todo.text.toLowerCase().includes(searchQuery);
-
+        const matchesSearch = !searchQuery || todo.text.toLowerCase().includes(searchQuery);
         return matchesFilter && matchesSearch;
     });
 
     if (filteredTodos.length === 0) {
-        const message = searchQuery ? 'No se encontraron tareas con ese criterio' :
+        const message = searchQuery ? 'No hay resultados para esta busqueda' :
                        currentFilter === 'completed' ? 'No hay tareas completadas' :
-                       currentFilter === 'pending' ? 'No hay tareas pendientes' :
-                       '¡No hay tareas! Añade una nueva';
+                       currentFilter === 'pending' ? 'Todas las tareas estan completadas' :
+                       'No hay tareas. Crea una nueva';
+
+        const icon = searchQuery ? 'bi-search' :
+                    currentFilter === 'completed' ? 'bi-check-circle' :
+                    currentFilter === 'pending' ? 'bi-trophy' :
+                    'bi-inbox';
 
         container.innerHTML = `
             <div class="empty-state">
-                <i class="bi bi-inbox"></i>
-                <h5 class="mt-3 mb-2">${message}</h5>
-                ${searchQuery ? '<button class="btn btn-sm btn-outline-secondary mt-2" onclick="clearSearch()">Limpiar búsqueda</button>' : ''}
+                <i class="bi ${icon}"></i>
+                <h5 class="mt-3">${message}</h5>
+                ${searchQuery ? `<button class="filter-btn mt-2" onclick="clearSearch()"><i class="bi bi-x-lg"></i> Limpiar busqueda</button>` : ''}
             </div>
         `;
         return;
     }
 
-    container.innerHTML = filteredTodos.map(todo => {
+    container.innerHTML = filteredTodos.map((todo, index) => {
         const isChecked = todo.checked === true || todo.checked === 'true';
         return `
-            <div class="card mb-3 todo-item ${isChecked ? 'completed' : ''}" data-id="${todo.id}">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="form-check flex-grow-1">
-                            <input class="form-check-input" type="checkbox"
-                                   ${isChecked ? 'checked' : ''}
-                                   onchange="toggleTodo('${todo.id}', this.checked)"
-                                   style="transform: scale(1.3); margin-top: 0.35rem;">
-                            <label class="form-check-label ms-2 ${isChecked ? 'text-decoration-line-through' : ''}"
-                                   style="font-size: 1.1rem;">
-                                <strong>${escapeHtml(todo.text)}</strong>
-                            </label>
-                        </div>
-                        <div class="d-flex gap-2 align-items-center">
-                            ${isChecked ?
-                                '<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Completada</span>' :
-                                '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Pendiente</span>'}
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteTodo('${todo.id}')">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </div>
+            <div class="todo-item ${isChecked ? 'completed' : ''}" data-id="${todo.id}" style="animation-delay: ${index * 0.05}s;">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="form-check d-flex align-items-start flex-grow-1">
+                        <input class="form-check-input mt-1" type="checkbox"
+                               ${isChecked ? 'checked' : ''}
+                               onchange="toggleTodo('${todo.id}', this.checked)">
+                        <span class="todo-text ms-3">${escapeHtml(todo.text)}</span>
                     </div>
-                    <div class="mt-3 pt-2 border-top">
-                        <small class="text-muted d-block">
-                            <i class="bi bi-calendar-plus"></i> Creada: ${formatDate(todo.createdAt)}
-                            ${todo.updatedAt !== todo.createdAt ? ` | <i class="bi bi-pencil"></i> Actualizada: ${formatDate(todo.updatedAt)}` : ''}
-                        </small>
+                    <div class="d-flex gap-2 align-items-center ms-3">
+                        <span class="badge-status ${isChecked ? 'badge-done' : 'badge-pending'}">
+                            ${isChecked ? '<i class="bi bi-check-circle-fill"></i> Hecha' : '<i class="bi bi-clock"></i> Pendiente'}
+                        </span>
+                        <button class="btn-delete" onclick="deleteTodo('${todo.id}')" title="Eliminar">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
                     </div>
+                </div>
+                <div class="todo-meta">
+                    <i class="bi bi-calendar-plus"></i> ${formatDate(todo.createdAt)}
+                    ${todo.updatedAt && todo.updatedAt !== todo.createdAt ?
+                        ` &middot; <i class="bi bi-pencil"></i> ${formatDate(todo.updatedAt)}` : ''}
                 </div>
             </div>
         `;
@@ -170,16 +220,16 @@ async function addTodo() {
     const text = input.value.trim();
 
     if (!text) {
+        input.style.borderColor = 'var(--danger)';
         input.focus();
-        input.classList.add('is-invalid');
-        setTimeout(() => input.classList.remove('is-invalid'), 2000);
+        setTimeout(() => input.style.borderColor = '', 2000);
         return;
     }
 
     const btn = document.getElementById('add-btn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Añadiendo...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
     try {
         const response = await fetch(`${currentApiUrl}/todos`, {
@@ -193,27 +243,21 @@ async function addTodo() {
         input.value = '';
         await loadTodos();
 
-        // Success feedback
-        btn.classList.add('btn-success');
-        btn.classList.remove('btn-primary');
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> ¡Añadida!';
+        btn.classList.add('success');
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Creada';
         setTimeout(() => {
             btn.innerHTML = originalHtml;
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-primary');
+            btn.classList.remove('success');
             btn.disabled = false;
         }, 1500);
     } catch (error) {
-        showError(`Error al añadir tarea: ${error.message}`);
+        showToast(`Error al crear tarea: ${error.message}`, 'danger');
         btn.innerHTML = originalHtml;
         btn.disabled = false;
     }
 }
 
 async function toggleTodo(id, checked) {
-    const card = document.querySelector(`[data-id="${id}"]`);
-    const originalClass = card.className;
-
     try {
         const response = await fetch(`${currentApiUrl}/todos/${id}`, {
             method: 'PUT',
@@ -222,17 +266,15 @@ async function toggleTodo(id, checked) {
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
         await loadTodos();
     } catch (error) {
-        showError(`Error al actualizar tarea: ${error.message}`);
-        card.className = originalClass;
+        showToast(`Error al actualizar: ${error.message}`, 'danger');
         await loadTodos();
     }
 }
 
 async function deleteTodo(id) {
-    if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+    if (!confirm('¿Seguro que quieres eliminar esta tarea?')) return;
 
     const card = document.querySelector(`[data-id="${id}"]`);
     card.classList.add('hiding');
@@ -243,24 +285,20 @@ async function deleteTodo(id) {
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        setTimeout(async () => {
-            await loadTodos();
-        }, 300);
+        setTimeout(() => loadTodos(), 300);
     } catch (error) {
         card.classList.remove('hiding');
-        showError(`Error al eliminar tarea: ${error.message}`);
+        showToast(`Error al eliminar: ${error.message}`, 'danger');
     }
 }
 
 function formatDate(timestamp) {
-    const date = new Date(parseFloat(timestamp) * 1000);
+    if (!timestamp) return '';
+    const ts = typeof timestamp === 'number' && timestamp > 1e12 ? timestamp / 1000 : parseFloat(timestamp);
+    const date = new Date(ts * 1000);
     return date.toLocaleString('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
     });
 }
 
@@ -270,14 +308,20 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showError(message) {
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-    alert.style.zIndex = '9999';
-    alert.innerHTML = `
-        <i class="bi bi-exclamation-triangle-fill"></i> ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        z-index: 9999; padding: 0.9rem 1.5rem; border-radius: 10px;
+        background: ${type === 'danger' ? '#dc2626' : '#16a34a'};
+        color: white; font-weight: 600; font-size: 0.9rem;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease-out;
     `;
-    document.body.appendChild(alert);
-    setTimeout(() => alert.remove(), 5000);
+    toast.innerHTML = `<i class="bi bi-${type === 'danger' ? 'exclamation-triangle' : 'check-circle'}-fill"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
