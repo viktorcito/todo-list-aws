@@ -23,7 +23,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh 'sam build'
-                sh 'sam deploy --config-env staging'
+                sh 'sam deploy --config-env staging --no-fail-on-empty-changeset'
             }
         }
         stage('Rest Test') {

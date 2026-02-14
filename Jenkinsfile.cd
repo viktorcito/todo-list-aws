@@ -13,7 +13,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh 'sam build'
-                sh 'sam deploy --config-env production'
+                sh 'sam deploy --config-env production --no-fail-on-empty-changeset'
             }
         }
         stage('Rest Test') {
