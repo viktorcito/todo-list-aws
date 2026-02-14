@@ -9,12 +9,14 @@ def get(event, context):
     if item:
         response = {
             "statusCode": 200,
+            "headers": {"Access-Control-Allow-Origin": "*"},
             "body": json.dumps(item,
                                cls=decimalencoder.DecimalEncoder)
         }
     else:
         response = {
             "statusCode": 404,
+            "headers": {"Access-Control-Allow-Origin": "*"},
             "body": ""
         }
     return response
