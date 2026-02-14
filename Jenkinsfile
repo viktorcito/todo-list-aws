@@ -47,11 +47,14 @@ pipeline {
         }
         stage('Promote') {
             steps {
-                sh '''
-                    git checkout master
-                    git merge develop
-                    git push origin master
-                '''
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                    sh '''
+                        git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/viktorcito/todo-list-aws.git
+                        git checkout master
+                        git merge develop
+                        git push origin master
+                    '''
+                }
             }
         }
     }
