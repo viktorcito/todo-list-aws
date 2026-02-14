@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List - UNIR DevOps CP1-4</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .todo-item {
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+        .todo-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .todo-item.checked {
+            border-left-color: #28a745;
+            opacity: 0.7;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .badge {
+            font-size: 0.9rem;
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h1 class="text-center mb-0">
+                    <i class="bi bi-check2-square"></i> Todo List
+                </h1>
+                <p class="text-center mb-0 mt-2">
+                    <small>UNIR - Experto DevOps & Cloud - CP1-4</small>
+                </p>
+            </div>
+            <div class="card-body">
+                <!-- Environment Selector -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Entorno:</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="environment" id="env-staging" value="staging" checked>
+                        <label class="btn btn-outline-primary" for="env-staging">
+                            <i class="bi bi-cloud-upload"></i> Staging
+                        </label>
+                        <input type="radio" class="btn-check" name="environment" id="env-production" value="production">
+                        <label class="btn btn-outline-success" for="env-production">
+                            <i class="bi bi-rocket-takeoff"></i> Production
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">API: <code id="current-api">Cargando...</code></small>
+                    </div>
+                </div>
+
+                <!-- Add Todo Form -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-plus-circle"></i> Añadir nueva tarea
+                        </h5>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="new-todo-text" placeholder="Escribe una nueva tarea...">
+                            <button class="btn btn-primary" id="add-btn">
+                                <i class="bi bi-plus-lg"></i> Añadir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Todo List -->
+                <div id="todos-container">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando tareas...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-muted text-center">
+                <small>Autor: Victor Garcia Santos | GitHub: <a href="https://github.com/viktorcito" target="_blank">viktorcito</a></small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
