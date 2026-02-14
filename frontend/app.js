@@ -10,12 +10,10 @@ let allTodos = [];
 let currentFilter = 'all';
 let searchQuery = '';
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     updateApiDisplay();
     loadTodos();
 
-    // Environment switch
     document.querySelectorAll('input[name="environment"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             currentEnv = e.target.value;
@@ -25,19 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Add todo
     document.getElementById('add-btn').addEventListener('click', addTodo);
     document.getElementById('new-todo-text').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addTodo();
     });
 
-    // Search
     document.getElementById('search-input').addEventListener('input', (e) => {
         searchQuery = e.target.value.toLowerCase();
         renderTodos();
     });
 
-    // Filters
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -56,7 +51,6 @@ function updateStats() {
     const total = allTodos.length;
     const completed = allTodos.filter(t => t.checked === true || t.checked === 'true').length;
     const pending = total - completed;
-
     animateNumber('stat-total', total);
     animateNumber('stat-completed', completed);
     animateNumber('stat-pending', pending);
@@ -66,10 +60,8 @@ function animateNumber(elementId, target) {
     const el = document.getElementById(elementId);
     const current = parseInt(el.textContent) || 0;
     if (current === target) return;
-
     const duration = 400;
     const start = performance.now();
-
     function update(now) {
         const elapsed = now - start;
         const progress = Math.min(elapsed / duration, 1);
@@ -84,48 +76,42 @@ async function loadTodos() {
     const container = document.getElementById('todos-container');
     container.innerHTML = `
         <div class="text-center py-5">
-            <div class="spinner-border" style="color: var(--primary); width: 3rem; height: 3rem;" role="status">
+            <div class="spinner-border" style="color: var(--primary); width: 2.5rem; height: 2.5rem;" role="status">
                 <span class="visually-hidden">Cargando...</span>
             </div>
-            <p class="mt-3" style="color: var(--gray-500);">Conectando con ${currentEnv}...</p>
+            <p class="mt-3" style="color: var(--text-muted); font-weight: 500;">Conectando con ${currentEnv}...</p>
         </div>
     `;
 
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`${currentApiUrl}/todos`, {
-            signal: controller.signal
-        });
+        const response = await fetch(`${currentApiUrl}/todos`, { signal: controller.signal });
         clearTimeout(timeout);
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
         allTodos = await response.json();
         updateStats();
         renderTodos();
     } catch (error) {
         allTodos = [];
         updateStats();
-
         let errorMsg = error.message;
         let helpMsg = '';
 
         if (error.name === 'AbortError' || error.message === 'Failed to fetch') {
             errorMsg = 'No se pudo conectar con la API';
             helpMsg = `
-                <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 12px; padding: 1.2rem; margin-top: 1rem; text-align: left;">
-                    <p style="color: var(--warning); font-weight: 600; margin-bottom: 0.5rem;">
+                <div style="background: var(--border-light); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem; margin-top: 1rem; text-align: left;">
+                    <p style="color: var(--warning); font-weight: 700; margin-bottom: 0.5rem; font-size: 0.88rem;">
                         <i class="bi bi-info-circle-fill"></i> Posibles causas:
                     </p>
-                    <ul style="color: var(--gray-600); margin: 0; padding-left: 1.2rem; font-size: 0.9rem;">
+                    <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.2rem; font-size: 0.85rem; line-height: 1.7;">
                         <li>La API necesita ser redesplegada con CORS habilitado</li>
                         <li>El laboratorio de AWS Academy no esta activo</li>
                         <li>Los stacks de CloudFormation no estan desplegados</li>
                     </ul>
-                    <p style="color: var(--gray-500); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 0;">
-                        <i class="bi bi-terminal"></i> Ejecuta el pipeline CI en Jenkins para redesplegar la API con CORS.
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.75rem; margin-bottom: 0;">
+                        <i class="bi bi-terminal"></i> Ejecuta el pipeline CI en Jenkins para redesplegar con CORS.
                     </p>
                 </div>
             `;
@@ -133,7 +119,7 @@ async function loadTodos() {
 
         container.innerHTML = `
             <div class="empty-state">
-                <i class="bi bi-wifi-off" style="color: var(--danger); opacity: 0.6;"></i>
+                <i class="bi bi-wifi-off" style="color: var(--danger); opacity: 0.5;"></i>
                 <h5 class="mt-3">${errorMsg}</h5>
                 ${helpMsg}
                 <button class="filter-btn mt-3" onclick="loadTodos()" style="cursor: pointer;">
@@ -153,7 +139,6 @@ function renderTodos() {
             currentFilter === 'all' ||
             (currentFilter === 'completed' && isChecked) ||
             (currentFilter === 'pending' && !isChecked);
-
         const matchesSearch = !searchQuery || todo.text.toLowerCase().includes(searchQuery);
         return matchesFilter && matchesSearch;
     });
@@ -163,17 +148,15 @@ function renderTodos() {
                        currentFilter === 'completed' ? 'No hay tareas completadas' :
                        currentFilter === 'pending' ? 'Todas las tareas estan completadas' :
                        'No hay tareas. Crea una nueva';
-
         const icon = searchQuery ? 'bi-search' :
                     currentFilter === 'completed' ? 'bi-check-circle' :
-                    currentFilter === 'pending' ? 'bi-trophy' :
-                    'bi-inbox';
+                    currentFilter === 'pending' ? 'bi-trophy' : 'bi-inbox';
 
         container.innerHTML = `
             <div class="empty-state">
                 <i class="bi ${icon}"></i>
                 <h5 class="mt-3">${message}</h5>
-                ${searchQuery ? `<button class="filter-btn mt-2" onclick="clearSearch()"><i class="bi bi-x-lg"></i> Limpiar busqueda</button>` : ''}
+                ${searchQuery ? `<button class="filter-btn mt-2" onclick="clearSearch()"><i class="bi bi-x-lg"></i> Limpiar</button>` : ''}
             </div>
         `;
         return;
@@ -182,7 +165,7 @@ function renderTodos() {
     container.innerHTML = filteredTodos.map((todo, index) => {
         const isChecked = todo.checked === true || todo.checked === 'true';
         return `
-            <div class="todo-item ${isChecked ? 'completed' : ''}" data-id="${todo.id}" style="animation-delay: ${index * 0.05}s;">
+            <div class="todo-item ${isChecked ? 'completed' : ''}" data-id="${todo.id}" style="animation-delay: ${index * 0.04}s;">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="form-check d-flex align-items-start flex-grow-1">
                         <input class="form-check-input mt-1" type="checkbox"
@@ -192,15 +175,15 @@ function renderTodos() {
                     </div>
                     <div class="d-flex gap-2 align-items-center ms-3">
                         <span class="badge-status ${isChecked ? 'badge-done' : 'badge-pending'}">
-                            ${isChecked ? '<i class="bi bi-check-circle-fill"></i> Hecha' : '<i class="bi bi-clock"></i> Pendiente'}
+                            ${isChecked ? '<i class="bi bi-check2"></i> Hecha' : '<i class="bi bi-clock"></i> Pendiente'}
                         </span>
                         <button class="btn-delete" onclick="deleteTodo('${todo.id}')" title="Eliminar">
-                            <i class="bi bi-trash-fill"></i>
+                            <i class="bi bi-trash3"></i>
                         </button>
                     </div>
                 </div>
                 <div class="todo-meta">
-                    <i class="bi bi-calendar-plus"></i> ${formatDate(todo.createdAt)}
+                    <i class="bi bi-calendar3"></i> ${formatDate(todo.createdAt)}
                     ${todo.updatedAt && todo.updatedAt !== todo.createdAt ?
                         ` &middot; <i class="bi bi-pencil"></i> ${formatDate(todo.updatedAt)}` : ''}
                 </div>
@@ -218,7 +201,6 @@ function clearSearch() {
 async function addTodo() {
     const input = document.getElementById('new-todo-text');
     const text = input.value.trim();
-
     if (!text) {
         input.style.borderColor = 'var(--danger)';
         input.focus();
@@ -237,12 +219,9 @@ async function addTodo() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text })
         });
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
         input.value = '';
         await loadTodos();
-
         btn.classList.add('success');
         btn.innerHTML = '<i class="bi bi-check-lg"></i> Creada';
         setTimeout(() => {
@@ -251,7 +230,7 @@ async function addTodo() {
             btn.disabled = false;
         }, 1500);
     } catch (error) {
-        showToast(`Error al crear tarea: ${error.message}`, 'danger');
+        showToast(`Error al crear: ${error.message}`, 'danger');
         btn.innerHTML = originalHtml;
         btn.disabled = false;
     }
@@ -264,7 +243,6 @@ async function toggleTodo(id, checked) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ checked: checked.toString() })
         });
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTodos();
     } catch (error) {
@@ -274,16 +252,11 @@ async function toggleTodo(id, checked) {
 }
 
 async function deleteTodo(id) {
-    if (!confirm('¿Seguro que quieres eliminar esta tarea?')) return;
-
+    if (!confirm('Eliminar esta tarea?')) return;
     const card = document.querySelector(`[data-id="${id}"]`);
     card.classList.add('hiding');
-
     try {
-        const response = await fetch(`${currentApiUrl}/todos/${id}`, {
-            method: 'DELETE'
-        });
-
+        const response = await fetch(`${currentApiUrl}/todos/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         setTimeout(() => loadTodos(), 300);
     } catch (error) {
@@ -312,10 +285,10 @@ function showToast(message, type) {
     const toast = document.createElement('div');
     toast.style.cssText = `
         position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-        z-index: 9999; padding: 0.9rem 1.5rem; border-radius: 10px;
-        background: ${type === 'danger' ? '#dc2626' : '#16a34a'};
-        color: white; font-weight: 600; font-size: 0.9rem;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        z-index: 9999; padding: 0.85rem 1.4rem; border-radius: 12px;
+        background: ${type === 'danger' ? '#dc2626' : '#059669'};
+        color: white; font-weight: 600; font-size: 0.88rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         animation: slideIn 0.3s ease-out;
     `;
     toast.innerHTML = `<i class="bi bi-${type === 'danger' ? 'exclamation-triangle' : 'check-circle'}-fill"></i> ${message}`;
