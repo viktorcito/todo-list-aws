@@ -4,6 +4,10 @@ pipeline {
         stage('Get Code') {
             steps {
                 git branch: 'develop', url: 'https://github.com/viktorcito/todo-list-aws.git'
+                dir('config') {
+                    git branch: 'master', url: 'https://github.com/viktorcito/todo-list-aws-config.git'
+                }
+                sh 'cp config/samconfig.toml samconfig.toml'
             }
         }
         stage('Static Test') {
@@ -19,16 +23,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh 'sam build'
-                sh '''
-                    sam deploy \
-                        --stack-name todo-list-aws-staging \
-                        --resolve-s3 \
-                        --no-confirm-changeset \
-                        --no-fail-on-empty-changeset \
-                        --parameter-overrides Stage=staging \
-                        --region us-east-1 \
-                        --capabilities CAPABILITY_IAM
-                '''
+                sh 'sam deploy --config-env staging --no-fail-on-empty-changeset'
             }
         }
         stage('Rest Test') {
