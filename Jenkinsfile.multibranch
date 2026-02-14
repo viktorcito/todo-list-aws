@@ -49,8 +49,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
                     sh '''
                         git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/viktorcito/todo-list-aws.git
-                        git checkout master
-                        git merge develop
+                        git fetch origin
+                        git checkout -b master origin/master
+                        git merge origin/develop
                         git push origin master
                     '''
                 }
